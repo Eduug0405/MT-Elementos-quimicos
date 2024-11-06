@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Máquina de Turing - Tabla Periódica</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="help-icon" onclick="openModal()">?</div>
+    
+    <div class="container">
+        <h1>Máquina de Turing de Elementos</h1>
+        <form id="compound-form">
+            <input type="text" id="input_symbols" placeholder="Ejemplo: H+O" required>
+            <button type="submit">Obtener Compuesto</button>
+        </form>
+        
+        <div id="reaction-animation">
+            <span id="reaction-elements"></span>
+        </div>
+
+        <div id="result"></div>
+        <div id="validation-message"></div>
+        <div id="history" class="history-container"></div>
+    </div>
+
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Cadenas de Entrada Válidas</h2>
+            <ul id="valid-entries-list">
+                <li>H+O</li>
+                <li>Na+Cl</li>
+                <li>C+O</li>
+                <li>Fe+O</li>
+                <li>Ca+C+O</li>
+                <li>C+H</li>
+                <li>N+H</li>
+                <li>C+H+O</li>
+                <li>H+Cl</li>
+                <li>C+N+H</li>
+                <li>Ca+O</li>
+                <li>C+O+H</li>
+                <li>Fe+C</li>
+                <li>Pb+O</li>
+                <li>Mg+C+O</li>
+                <li>Al+O</li>
+                <li>Cu+Cl</li>
+                <li>C+H+N+O</li>
+                <li>Fe+S</li>
+                <li>C+H+N</li>
+                <li>Pb+S</li>
+                <li>Fe+Cl</li>
+                <li>B+O</li>
+                <li>K+C+O</li>
+                <li>Cr+O</li>
+                <li>B+H</li>
+                <li>Na+S+O</li>
+                <li>B+C</li>
+                <li>P+H</li>
+                <li>Hg+O</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let history = [];
+
+        document.getElementById("compound-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const inputSymbols = document.getElementById("input_symbols").value.trim();
+            const reactionElements = document.getElementById("reaction-elements");
+            const resultDiv = document.getElementById("result");
+            const validationMessageDiv = document.getElementById("validation-message");
+
+            resultDiv.innerText = "";
+            validationMessageDiv.innerText = "";
+            reactionElements.innerText = inputSymbols;
+            document.getElementById("reaction-animation").classList.add("active");
+
+            fetch("/get_compound", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ input_symbols: inputSymbols })
+            })
+            .then(response => response.json())
+            .then(data => {
+                setTimeout(() => {
+                    document.getElementById("reaction-animation").classList.remove("active");
+
+                    if (data.compound !== "Compuesto no encontrado") {
+                        resultDiv.innerText = "Resultado: " + data.compound;
+                        validationMessageDiv.innerText = "CADENA ACEPTADA";
+                        validationMessageDiv.classList.add("accepted");
+                        playCompoundSound(data.compound);
+                        updateHistory(inputSymbols, "Aceptada");
+                    } else {
+                        resultDiv.innerText = "";
+                        validationMessageDiv.innerText = "CADENA INVÁLIDA";
+                        validationMessageDiv.classList.add("invalid");
+                        updateHistory(inputSymbols, "Inválida");
+                    }
+                }, 2000);
+            })
+            .catch(error => {
+                console.error("Error en la solicitud:", error);
+                validationMessageDiv.innerText = "Error de conexión. Intenta nuevamente.";
+                validationMessageDiv.classList.add("invalid");
+            });
+        });
+
+        function playCompoundSound(compound) {
+            const audio = new Audio(`static/sounds/${compound}.mp3`);
+            audio.play();
+        }
+
+        function updateHistory(inputSymbols, status) {
+            history.unshift({ input: inputSymbols, status });
+            if (history.length > 5) history.pop(); 
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyDiv = document.getElementById("history");
+            historyDiv.innerHTML = "<h3>Historial de entradas</h3>" + history.map(entry => {
+                return `<p>${entry.input} - ${entry.status}</p>`;
+            }).join("");
+        }
+
+    
+        function openModal() {
+            document.getElementById("helpModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("helpModal").style.display = "none";
+        }
+
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById("helpModal");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        };
+    </script>
+</body>
+</html>
